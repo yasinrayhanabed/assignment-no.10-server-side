@@ -1,15 +1,21 @@
 const express = require('express');
 const cors = require('cors');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+require('dotenv').config();
+
 const app = express();
 const port = process.env.PORT || 3000;
 
-/*
-middlewere
-*/
-app.get('/', (req, res) => {
-  res.send('Hello World!')
-})
+// MongoDB connection
+const uri = process.env.MONGODB_URI || "mongodb+srv://Online-Learning:883fT8J671i9iPhP@cluster0.xdad6f7.mongodb.net/?appName=Cluster0";
 
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`)
-})
+// Middleware
+app.use(cors());
+app.use(express.json());
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
+  }
+});
