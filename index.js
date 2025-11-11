@@ -4,13 +4,16 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000;
 
-// MongoDB connection
-const uri = process.env.MONGODB_URI || "mongodb+srv://Online-Learning:883fT8J671i9iPhP@cluster0.xdad6f7.mongodb.net/?appName=Cluster0";
+const uri ="mongodb+srv://Online-Learning:883fT8J671i9iPhP@cluster0.xdad6f7.mongodb.net/?appName=Cluster0";
 
-// Middleware
-app.use(cors());
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:8080', 'http://127.0.0.1:8080'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 const client = new MongoClient(uri, {
@@ -22,25 +25,33 @@ const client = new MongoClient(uri, {
 });
 
 let db;
+let isConnected = false;
 
 async function connectDB() {
   try {
     await client.connect();
+    await client.db('admin').command({ ping: 1 });
     db = client.db('online-learning-platform');
-    console.log('Connected to MongoDB!');
+    isConnected = true;
+    console.log('✅ Connected to MongoDB!');
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.error('❌ MongoDB connection error:', error);
+    isConnected = false;
+    throw error;
   }
 }
 
-// API Routes
+// Routes
 app.get('/', (req, res) => {
   res.json({ message: 'Online Learning Platform API Server' });
 });
 
-// Get all courses with search, category filter, and sorting
 app.get('/courses', async (req, res) => {
   try {
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
+    
     const { search, category, sortBy } = req.query;
     let query = {};
     let sort = {};
@@ -60,13 +71,16 @@ app.get('/courses', async (req, res) => {
     const courses = await db.collection('courses').find(query).sort(sort).toArray();
     res.json(courses);
   } catch (error) {
+    console.error('Error fetching courses:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get single course
 app.get('/courses/:id', async (req, res) => {
   try {
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
     const course = await db.collection('courses').findOne({ _id: new ObjectId(req.params.id) });
     if (!course) {
       return res.status(404).json({ error: 'Course not found' });
@@ -77,107 +91,44 @@ app.get('/courses/:id', async (req, res) => {
   }
 });
 
-// Add new course
-app.post('/courses', async (req, res) => {
+app.get('/users', async (req, res) => {
   try {
-    const course = {
-      ...req.body,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    const result = await db.collection('courses').insertOne(course);
-    res.json({ insertedId: result.insertedId, message: 'Course added successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Update course
-app.put('/courses/:id', async (req, res) => {
-  try {
-    const updateData = {
-      ...req.body,
-      updatedAt: new Date()
-    };
-    const result = await db.collection('courses').updateOne(
-      { _id: new ObjectId(req.params.id) },
-      { $set: updateData }
-    );
-    if (result.matchedCount === 0) {
-      return res.status(404).json({ error: 'Course not found' });
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
     }
-    res.json({ message: 'Course updated successfully' });
+    
+    const users = await db.collection('users').find({}).toArray();
+    res.json(users);
   } catch (error) {
+    console.error('Error fetching users:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Delete course
-app.delete('/courses/:id', async (req, res) => {
-  try {
-    const result = await db.collection('courses').deleteOne({ _id: new ObjectId(req.params.id) });
-    if (result.deletedCount === 0) {
-      return res.status(404).json({ error: 'Course not found' });
-    }
-    res.json({ message: 'Course deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get featured courses for home page
-app.get('/courses/featured', async (req, res) => {
-  try {
-    const courses = await db.collection('courses').find({ isFeatured: true }).limit(6).toArray();
-    res.json(courses);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get courses by instructor email
-app.get('/instructor/:email', async (req, res) => {
-  try {
-    const courses = await db.collection('courses').find({ instructorEmail: req.params.email }).toArray();
-    res.json(courses);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get top instructors for home page
-app.get('/instructors/top', async (req, res) => {
-  try {
-    const instructors = await db.collection('instructors').find({}).limit(4).toArray();
-    res.json(instructors);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Enroll in course
 app.post('/enroll', async (req, res) => {
   try {
-    const { userEmail, courseId, courseName, instructorName, duration } = req.body;
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
+    const { courseId, userEmail, courseName, instructorName, duration } = req.body;
     
-    // Check if already enrolled
-    const existing = await db.collection('enrollments').findOne({ 
-      userEmail, 
-      courseId: new ObjectId(courseId) 
+    const existingEnrollment = await db.collection('enrollments').findOne({
+      courseId,
+      userEmail
     });
     
-    if (existing) {
+    if (existingEnrollment) {
       return res.status(400).json({ error: 'Already enrolled in this course' });
     }
     
     const enrollment = {
+      courseId,
       userEmail,
-      courseId: new ObjectId(courseId),
       courseName,
       instructorName,
-      duration,
-      enrolledAt: new Date(),
-      progress: 0
+      duration: parseInt(duration),
+      progress: 0,
+      enrolledAt: new Date()
     };
     
     const result = await db.collection('enrollments').insertOne(enrollment);
@@ -187,39 +138,68 @@ app.post('/enroll', async (req, res) => {
   }
 });
 
-// Get enrolled courses for user
-app.get('/enroll/:email', async (req, res) => {
+app.get('/enroll/:userEmail', async (req, res) => {
   try {
-    const enrollments = await db.collection('enrollments').find({ userEmail: req.params.email }).toArray();
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
+    const enrollments = await db.collection('enrollments').find({
+      userEmail: req.params.userEmail
+    }).toArray();
     res.json(enrollments);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Add user
-app.post('/users', async (req, res) => {
+app.put('/enroll/:enrollmentId/progress', async (req, res) => {
   try {
-    // Check if user already exists
-    const existingUser = await db.collection('users').findOne({ email: req.body.email });
-    if (existingUser) {
-      return res.status(400).json({ error: 'User already exists' });
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
     }
-    
-    const user = {
-      ...req.body,
-      createdAt: new Date()
-    };
-    const result = await db.collection('users').insertOne(user);
-    res.json({ insertedId: result.insertedId, message: 'User added successfully' });
+    const { progress } = req.body;
+    await db.collection('enrollments').updateOne(
+      { _id: new ObjectId(req.params.enrollmentId) },
+      { $set: { progress: parseInt(progress) } }
+    );
+    res.json({ message: 'Progress updated successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get user by email
+// Categories endpoint
+app.get('/categories', async (req, res) => {
+  try {
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
+    const categories = await db.collection('courses').distinct('category');
+    res.json(categories);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Featured courses endpoint
+app.get('/courses/featured', async (req, res) => {
+  try {
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
+    const courses = await db.collection('courses').find({ featured: true }).limit(6).toArray();
+    res.json(courses);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// User by email endpoint
 app.get('/users/:email', async (req, res) => {
   try {
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
     const user = await db.collection('users').findOne({ email: req.params.email });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -230,91 +210,23 @@ app.get('/users/:email', async (req, res) => {
   }
 });
 
-// Update enrollment progress
-app.put('/enroll/:id/progress', async (req, res) => {
-  try {
-    const { progress } = req.body;
-    const result = await db.collection('enrollments').updateOne(
-      { _id: new ObjectId(req.params.id) },
-      { $set: { progress: progress, updatedAt: new Date() } }
-    );
-    if (result.matchedCount === 0) {
-      return res.status(404).json({ error: 'Enrollment not found' });
-    }
-    res.json({ message: 'Progress updated successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get all users (admin)
-app.get('/users', async (req, res) => {
-  try {
-    const users = await db.collection('users').find({}).toArray();
-    res.json(users);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get course categories
-app.get('/categories', async (req, res) => {
-  try {
-    const categories = await db.collection('courses').distinct('category');
-    res.json(categories);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Generate certificate
-app.post('/certificate', async (req, res) => {
-  try {
-    const { userEmail, courseId } = req.body;
-    const enrollment = await db.collection('enrollments').findOne({
-      userEmail,
-      courseId: new ObjectId(courseId),
-      progress: 100
-    });
-    
-    if (!enrollment) {
-      return res.status(400).json({ error: 'Course not completed' });
-    }
-    
-    res.json({ message: 'Certificate generated', certificateUrl: '#' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Add review
-app.post('/reviews', async (req, res) => {
-  try {
-    const review = {
-      ...req.body,
-      courseId: new ObjectId(req.body.courseId),
-      createdAt: new Date()
-    };
-    const result = await db.collection('reviews').insertOne(review);
-    res.json({ insertedId: result.insertedId, message: 'Review added successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get reviews for course
-app.get('/reviews/:courseId', async (req, res) => {
-  try {
-    const reviews = await db.collection('reviews').find({ courseId: new ObjectId(req.params.courseId) }).toArray();
-    res.json(reviews);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Start server
-connectDB().then(() => {
-  app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+// Add health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'Server is running', 
+    database: isConnected ? 'Connected' : 'Disconnected',
+    timestamp: new Date().toISOString()
   });
+});
+
+connectDB().then(() => {
+  app.listen(PORT, () => {
+    console.log(`✅ Server running on port ${PORT}`);
+    console.log(`🌐 API URL: http://localhost:${PORT}`);
+    console.log(`💾 Database: ${isConnected ? 'Connected' : 'Disconnected'}`);
+  });
+}).catch(error => {
+  console.error('❌ Failed to start server:', error);
+  process.exit(1);
 });
