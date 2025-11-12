@@ -152,6 +152,22 @@ app.get('/enroll/:userEmail', async (req, res) => {
   }
 });
 
+// Check enrollment status
+app.get('/check-enrollment/:courseId/:userEmail', async (req, res) => {
+  try {
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
+    const enrollment = await db.collection('enrollments').findOne({
+      courseId: req.params.courseId,
+      userEmail: req.params.userEmail
+    });
+    res.json({ enrolled: !!enrollment });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.put('/enroll/:enrollmentId/progress', async (req, res) => {
   try {
     if (!db || !isConnected) {
