@@ -181,13 +181,13 @@ app.get('/categories', async (req, res) => {
   }
 });
 
-// Featured courses endpoint
+// Featured courses endpoint - MUST come before /courses/:id
 app.get('/courses/featured', async (req, res) => {
   try {
     if (!db || !isConnected) {
       return res.status(500).json({ error: 'Database not connected' });
     }
-    const courses = await db.collection('courses').find({ featured: true }).limit(6).toArray();
+    const courses = await db.collection('courses').find({ isFeatured: true }).limit(6).toArray();
     res.json(courses);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -210,6 +210,134 @@ app.get('/users/:email', async (req, res) => {
   }
 });
 
+// Add new user
+app.post('/users', async (req, res) => {
+  try {
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
+    const { name, email, photoURL, role = 'student' } = req.body;
+    
+    const existingUser = await db.collection('users').findOne({ email });
+    if (existingUser) {
+      return res.json(existingUser);
+    }
+    
+    const user = {
+      name,
+      email,
+      photoURL,
+      role,
+      createdAt: new Date()
+    };
+    
+    const result = await db.collection('users').insertOne(user);
+    res.json({ ...user, _id: result.insertedId });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add new course
+app.post('/add-course', async (req, res) => {
+  try {
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
+    
+    const { title, image, price, duration, category, description, isFeatured, instructor } = req.body;
+    
+    const course = {
+      title,
+      image,
+      price: parseFloat(price),
+      duration: parseInt(duration),
+      category,
+      description,
+      isFeatured: Boolean(isFeatured),
+      instructor,
+      createdAt: new Date(),
+      enrolledCount: 0
+    };
+    
+    const result = await db.collection('courses').insertOne(course);
+    res.json({ message: 'Course added successfully', courseId: result.insertedId });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Update course
+app.put('/update-course/:id', async (req, res) => {
+  try {
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
+    
+    const { title, image, price, duration, category, description, isFeatured } = req.body;
+    
+    const updateData = {
+      title,
+      image,
+      price: parseFloat(price),
+      duration: parseInt(duration),
+      category,
+      description,
+      isFeatured: Boolean(isFeatured),
+      updatedAt: new Date()
+    };
+    
+    const result = await db.collection('courses').updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { $set: updateData }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+    
+    res.json({ message: 'Course updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Delete course
+app.delete('/delete-course/:id', async (req, res) => {
+  try {
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
+    
+    const result = await db.collection('courses').deleteOne({ _id: new ObjectId(req.params.id) });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+    
+    res.json({ message: 'Course deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get courses by instructor email
+app.get('/courses/instructor/:email', async (req, res) => {
+  try {
+    if (!db || !isConnected) {
+      return res.status(500).json({ error: 'Database not connected' });
+    }
+    
+    const courses = await db.collection('courses').find({
+      'instructor.email': req.params.email
+    }).toArray();
+    
+    res.json(courses);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Add health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
@@ -220,7 +348,96 @@ app.get('/health', (req, res) => {
   });
 });
 
-connectDB().then(() => {
+// Seed sample data
+async function seedData() {
+  try {
+    const coursesCount = await db.collection('courses').countDocuments();
+    if (coursesCount === 0) {
+      const sampleCourses = [
+        {
+          title: "Complete React Development Course",
+          image: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400",
+          price: 99,
+          duration: 12,
+          category: "Web Development",
+          description: "Master React from basics to advanced concepts including hooks, context, and modern patterns.",
+          isFeatured: true,
+          instructor: { name: "John Doe", email: "john@example.com" },
+          createdAt: new Date(),
+          enrolledCount: 245
+        },
+        {
+          title: "Python for Data Science",
+          image: "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400",
+          price: 129,
+          duration: 16,
+          category: "Data Science",
+          description: "Learn Python programming for data analysis, visualization, and machine learning.",
+          isFeatured: true,
+          instructor: { name: "Jane Smith", email: "jane@example.com" },
+          createdAt: new Date(),
+          enrolledCount: 189
+        },
+        {
+          title: "UI/UX Design Fundamentals",
+          image: "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=400",
+          price: 79,
+          duration: 8,
+          category: "Design",
+          description: "Create beautiful and user-friendly interfaces with modern design principles.",
+          isFeatured: true,
+          instructor: { name: "Mike Johnson", email: "mike@example.com" },
+          createdAt: new Date(),
+          enrolledCount: 156
+        },
+        {
+          title: "Node.js Backend Development",
+          image: "https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=400",
+          price: 109,
+          duration: 14,
+          category: "Backend Development",
+          description: "Build scalable backend applications with Node.js, Express, and MongoDB.",
+          isFeatured: true,
+          instructor: { name: "Sarah Wilson", email: "sarah@example.com" },
+          createdAt: new Date(),
+          enrolledCount: 203
+        },
+        {
+          title: "Mobile App Development with React Native",
+          image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400",
+          price: 149,
+          duration: 18,
+          category: "Mobile Development",
+          description: "Create cross-platform mobile apps using React Native and modern development tools.",
+          isFeatured: true,
+          instructor: { name: "Alex Chen", email: "alex@example.com" },
+          createdAt: new Date(),
+          enrolledCount: 134
+        },
+        {
+          title: "Digital Marketing Mastery",
+          image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400",
+          price: 89,
+          duration: 10,
+          category: "Marketing",
+          description: "Master digital marketing strategies including SEO, social media, and content marketing.",
+          isFeatured: true,
+          instructor: { name: "Emma Davis", email: "emma@example.com" },
+          createdAt: new Date(),
+          enrolledCount: 178
+        }
+      ];
+      
+      await db.collection('courses').insertMany(sampleCourses);
+      console.log('✅ Sample courses added to database');
+    }
+  } catch (error) {
+    console.error('❌ Error seeding data:', error);
+  }
+}
+
+connectDB().then(async () => {
+  await seedData();
   app.listen(PORT, () => {
     console.log(`✅ Server running on port ${PORT}`);
     console.log(`🌐 API URL: http://localhost:${PORT}`);
