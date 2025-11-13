@@ -6,6 +6,15 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+const admin = require("firebase-admin");
+
+const serviceAccount = require("./online-learning-platform-2b49a-firebase-adminsdk-fbsvc-4ed2bb6bb2.json");
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+
 const uri ="mongodb+srv://Online-Learning:883fT8J671i9iPhP@cluster0.xdad6f7.mongodb.net/?appName=Cluster0";
 
 app.use(cors({
@@ -372,7 +381,7 @@ async function seedData() {
       const sampleCourses = [
         {
           title: "Complete React Development Course",
-          image: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400",
+          image: "https://i.ibb.co.com/SXzrFH67/react-js-inscription-against-laptop-and-code-background-learn-react-programming-language-computer-co.jpg",
           price: 99,
           duration: 12,
           category: "Web Development",
@@ -384,7 +393,7 @@ async function seedData() {
         },
         {
           title: "Python for Data Science",
-          image: "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400",
+          image: "https://i.ibb.co.com/v6qd0KQJ/pythom-data-science.webp",
           price: 129,
           duration: 16,
           category: "Data Science",
@@ -396,7 +405,7 @@ async function seedData() {
         },
         {
           title: "UI/UX Design Fundamentals",
-          image: "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=400",
+          image: "https://i.ibb.co.com/vvjB7KDW/images-q-tbn-ANd9-Gc-Rhf-OQKOixn45-CBe-Tn-Xq-PDJCDFd-ADC1-Tx-Flfg-s.jpg",
           price: 79,
           duration: 8,
           category: "Design",
@@ -408,7 +417,7 @@ async function seedData() {
         },
         {
           title: "Node.js Backend Development",
-          image: "https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=400",
+          image: "https://i.ibb.co.com/mFrf0J6k/creative-abstract-quantum-illustration-23-2149236239.jpg",
           price: 109,
           duration: 14,
           category: "Backend Development",
@@ -420,7 +429,7 @@ async function seedData() {
         },
         {
           title: "Mobile App Development with React Native",
-          image: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=400",
+          image: "https://i.ibb.co.com/1Y9T3rpx/images-q-tbn-ANd9-Gc-QFiqh-NPIf-C41v-Arw-UJ6mf-Nw5-EJ-o-TEbvc-O4w-s.jpg",
           price: 149,
           duration: 18,
           category: "Mobile Development",
@@ -432,7 +441,7 @@ async function seedData() {
         },
         {
           title: "Digital Marketing Mastery",
-          image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400",
+          image: "https://i.ibb.co.com/GB8J3G2/1700542164188-e-2147483647-v-beta-t-VQlw-NSONr-Jj-Y1-QGQFPF80-HZOUV5k-YJc18q-Di8-FIt0i4.png",
           price: 89,
           duration: 10,
           category: "Marketing",
