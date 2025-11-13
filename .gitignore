@@ -12,3 +12,4 @@ yarn-error.log*
 dist/
 build/
 online-learning-platform-2b49a-firebase-adminsdk-fbsvc-4ed2bb6bb2.json
+.vercel

@@ -20,10 +20,7 @@ admin.initializeApp({
 const uri ="mongodb+srv://Online-Learning:883fT8J671i9iPhP@cluster0.xdad6f7.mongodb.net/?appName=Cluster0";
 
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://127.0.0.1:3000', 'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:8080', 'http://127.0.0.1:8080'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+origin: ["https://online-learning-platform-2b49a.web.app", "http://localhost:5173"]
 }));
 app.use(express.json());
 
@@ -40,8 +37,8 @@ let isConnected = false;
 
 async function connectDB() {
   try {
-    await client.connect();
-    await client.db('admin').command({ ping: 1 });
+    // await client.connect();
+    // await client.db('admin').command({ ping: 1 });
     db = client.db('online-learning-platform');
     isConnected = true;
     console.log('✅ Connected to MongoDB!');
