@@ -8,7 +8,9 @@ const PORT = process.env.PORT || 5000;
 
 const admin = require("firebase-admin");
 
-const serviceAccount = require("./online-learning-platform-2b49a-firebase-adminsdk-fbsvc-4ed2bb6bb2.json");
+// index.js
+const decoded = Buffer.from(process.env.FIREBASE_SERVICE_KEY, "base64").toString("utf8");
+const serviceAccount = JSON.parse(decoded);
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
